@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">Die Uhrzeit</string>
+
+    <string name="html">
+        <![CDATA[
+        <b>Learning4Kids</b><br/>
+        ERC Starting Grant: 801980 (gefördert durch die EU)<br/><br/>
+
+        <b>Kontakt bei technischen Fragen - LMU IT HelpDesk L4K</b><br/>
+        Ludwig-Maximilians-Universität München<br/>
+        Fakultät für Psychologie und Pädagogik<br/>
+        Informationstechnologie<br/>
+        Telefon: +49-(0)89-2180-6927<br/>
+        E-Mail: support.l4k@lmu.de<br/>
+        Website: www.psy.lmu.de/ffp/forschung/ag-niklas/learning-4kids/index.html<br/><br/>
+
+        <b>Kontakt Projektleiter</b><br/>
+        Prof. Dr. Frank Niklas<br/>
+        Ludwig-Maximilians-Universität München<br/>
+        Department Psychologie<br/>
+        Leopoldstr.13, 80802 München<br/>
+        Telefon: +49-(0)89-2180-5166<br/>
+        E-Mail: niklas@psy.lmu.de<br/><br/>
+
+        <b>Grafiken, Inhalte und Umsetzung der App</b><br/>
+        Jan Essig, Dipl. Designer (FH)<br/>
+        Storchensteinstrasse 84 D<br/>
+        D-68259 Mannheim<br/>
+        E-Mail:info@janessig.com<br/>
+        Website: www.janessig.com<br/><br/>
+
+        <b>Nutzungsbedingungen</b><br/>
+        Grafiken, Illustrationen, Spiele und Dateien dieser App unterliegen dem Urheberrecht und anderen Gesetzen zum Schutz des geistigen Eigentums. Ihre Weitergabe, Veränderung, gewerbliche Nutzung oder Verwendung in anderen Medien ist nicht gestattet. Alle Rechte vorbehalten.<br/>
+        <b>Haftungshinweis</b><br/>
+        Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschliesslich deren Betreiber verantwortlich. Angabe gemäss § 6 und § 7 Anbieterkennzeichnung des TDG.<br/>
+        ]]>
+    </string>
+</resources>
