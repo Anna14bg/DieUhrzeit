@@ -1,4 +1,4 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import android.content.Intent;
 import android.os.Handler;

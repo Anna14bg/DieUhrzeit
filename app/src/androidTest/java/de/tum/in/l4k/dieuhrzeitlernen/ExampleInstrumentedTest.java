@@ -1,4 +1,4 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.example.dieuhrzeit", appContext.getPackageName());
+        assertEquals("com.l4k.dieuhrzeit", appContext.getPackageName());
     }
 }

@@ -1,4 +1,4 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import org.junit.Test;
 

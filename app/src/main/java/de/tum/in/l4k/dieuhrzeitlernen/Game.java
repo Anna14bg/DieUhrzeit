@@ -1,8 +1,7 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
@@ -12,7 +11,6 @@ import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -20,10 +18,8 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.TranslateAnimation;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,10 +28,9 @@ import java.util.List;
 import java.util.Random;
 
 public class Game extends AppCompatActivity {
-    ImageView hrArrow, minArrow, exit, hint, sound, assess, star, congrats, hand;
+    ImageView hrArrow, minArrow, hint, sound, assess, congrats, hand;
     ProgressBar progressBar;
-    TextView question, points;
-    Animation zoomAnim, bounceAnim;
+    Animation zoomAnim;
     TranslateAnimation handAnim;
     float refX, refY;               // coordinates of last touch event
     float minRotation = 0;          // what angle should the source image be rotated at
@@ -44,13 +39,12 @@ public class Game extends AppCompatActivity {
     int taskNr, hrAsk, minAsk;      // current task to be answered
     int level;                      // current level
     int correctAnswers = 0;         // current level score
-    int totalPoints = 0;            // total game score
-    boolean usedHint = false;       // whether hints were used for current task
     ArrayList<List<Integer>> task;  // all tasks to be completed in this level
     int[] hrRange;                  // hour offsets for highest levels
     int[] minRange;                 // minute offsets for highest levels
     boolean blockTouch = true;      // whether to block current touch events
     MediaPlayer mediaPlayer;
+    boolean interruptAllowed = false;
 
     // needed for the hint animation process
     float hrCorrect = 0;
@@ -77,24 +71,26 @@ public class Game extends AppCompatActivity {
 
         hrArrow = findViewById(R.id.blueArrow);
         minArrow = findViewById(R.id.redArrow);
-        exit = findViewById(R.id.exit);
         hint = findViewById(R.id.hint);
         sound = findViewById(R.id.sound);
         assess = findViewById(R.id.assess);
-        question = findViewById(R.id.task);
-        points = findViewById(R.id.points);
-        star = findViewById(R.id.star);
         congrats = findViewById(R.id.congrats);
         progressBar = findViewById(R.id.progressBar);
         hand = findViewById(R.id.hand);
 
-        star.setColorFilter(Color.rgb(180, 180, 180));
-        star.setVisibility(View.VISIBLE);
-
         zoomAnim = AnimationUtils.loadAnimation(this, R.anim.zoom_animation);
-        bounceAnim = AnimationUtils.loadAnimation(this, R.anim.bounce_animation);
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+        level = getIntent().getIntExtra("level", 0);
+
+        if (level > 4) {
+            Resources res = getResources();
+            ImageView clock = findViewById(R.id.clock);
+            final int resourceId = res.getIdentifier("clock2",
+                    "drawable", getPackageName());
+            clock.setImageResource(resourceId);
+        }
 
         // calculate the clock center coordinates
         DisplayMetrics displayMetrics = new DisplayMetrics();
@@ -103,7 +99,15 @@ public class Game extends AppCompatActivity {
         centerX = (float) (displayMetrics.widthPixels*0.5);
 
         // initialize task
-        level = 0;
+        if (level == 1) {
+            minArrow.post(new Runnable() {
+                @Override
+                public void run() {
+                    minRotation = 180;
+                    TranslateView(minArrow, minRotation);
+                }
+            });
+        }
         taskNr = 0;
         task = new ArrayList<>();
         hrRange = new int[12];
@@ -113,7 +117,6 @@ public class Game extends AppCompatActivity {
 
         hrArrow.setOnTouchListener(new MyTouchListener());
         minArrow.setOnTouchListener(new MyTouchListener());
-        exit.setOnTouchListener(new MyTouchListener());
         hint.setOnTouchListener(new MyTouchListener());
         sound.setOnTouchListener(new MyTouchListener());
         assess.setOnTouchListener(new MyTouchListener());
@@ -132,25 +135,13 @@ public class Game extends AppCompatActivity {
         );
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        task = new ArrayList<>();
-        hrRange = new int[12];
-        minRange = new int[12];
-        taskNr = 0;
-        correctAnswers = 0;
-        progressBar.setProgress(0);
-        taskGenerator();
-        nextTask();
-    }
-
     void taskGenerator() {
         int min = 0;
         // shuffle a fixed set of hours to avoid duplicate tasks
         int[] hours = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
         shuffleArray(hours);
 
-        for (int i=0; i < 8; i++) {
+        for (int i=0; i < 12; i++) {
             int hr = hours[i];
 
             if (level == 1) {
@@ -158,30 +149,40 @@ public class Game extends AppCompatActivity {
             }
             if (level == 2 || level == 6) {
                 min = 15 * new Random().nextInt(4);
+                if ((i%2 != 0) && (task.get(i-1).get(1) == min)) min = (min + 15) % 60; // avoid asking same minutes multiple times in a roll
             }
             if (level == 3) {
                 min = (15 * new Random().nextInt(3)) + 15; // skip 0 here, because it makes no sense for the purpose of this level
+                if ((i%2 != 0) && (task.get(i-1).get(1) == min)) min = (min + 15) % 60; // avoid asking same minutes multiple times in a roll
             }
             if (level == 4 || level == 7 || level == 10) {
                 min = 5 * new Random().nextInt(12);
             }
-            if (level >= 5 && level <= 7 || level == 11) {
+            if (level >= 5 && level <= 7) {
                 hr = (hours[i] + 12) % 24;
             }
-            if (level == 8 || level == 12) {
-                if (i % 2 == 1) hr = (hours[i] + 12) % 24; // every other task is in with the 24h-clock
+            if (level == 8 || (level == 11 && i >= 5)) {
+                if (i % 2 == 1) hr = (hours[i] + 12) % 24; // every other task is with the 24h-clock
                 min = 5 * new Random().nextInt(12);
             }
-            if (level == 9 || level == 11) {
-                hrRange[i] = new Random().nextInt(24) - 12;
+            if (level == 9 || (level == 11 && i < 5)) {
+                if (level == 11) hr = (hours[i] + 12) % 24;
+                hrRange[i] = new Random().nextInt(25) - 12;
                 if (hrRange[i] == 0) hrRange[i] = 12;
             }
-            if (level == 10 || level == 12) {
-                minRange[i] = 5 * (new Random().nextInt(24) - 12);
+            if (level == 10 || (level == 11 && i >= 5)) {
+                minRange[i] = 5 * (new Random().nextInt(23) - 11);
                 if (min == 0) minRange[i] = Math.abs(minRange[i]);
                 if (minRange[i] == 0) minRange[i] = 30;
-                if (min + minRange[i] < 0 || min + minRange[i] >= 60) minRange[i] = -minRange[i];
+                if (min + minRange[i] < 0) {
+                    if (min - minRange[i] < 60) minRange[i] = -minRange[i];
+                    else minRange[i] = -5;
+                } else if (min + minRange[i] >= 60) {
+                    if (min - minRange[i] >= 0) minRange[i] = -minRange[i];
+                    else minRange[i] = -min;
+                }
             }
+
             task.add(Arrays.asList(hr, min));
         }
     }
@@ -209,6 +210,15 @@ public class Game extends AppCompatActivity {
     }
 
     void taskSound() {
+        if (mediaPlayer != null) {
+            try {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+            } catch (Exception e) {}
+            mediaPlayer.release();
+        }
+
         final Resources res = getResources();
         final int esIst = res.getIdentifier("es_ist", "raw", getPackageName());
         if (level == 3) {
@@ -222,8 +232,9 @@ public class Game extends AppCompatActivity {
                 @Override
                 public void onCompletion(MediaPlayer mediaPlayer) {
                     mediaPlayer.release();
+                    mediaPlayer = null;
 
-                    int stepSound = 0;
+                    int stepSound;
                     if (minAsk == 15 || minAsk == 45)
                         stepSound = res.getIdentifier("viertel", "raw", getPackageName());
                     else stepSound = res.getIdentifier("halb", "raw", getPackageName());
@@ -238,12 +249,12 @@ public class Game extends AppCompatActivity {
                         @Override
                         public void onCompletion(MediaPlayer mediaPlayer) {
                             mediaPlayer.release();
+                            mediaPlayer = null;
 
                             if (minAsk == 15) mediaPlayer = MediaPlayer.create(Game.this, R.raw.nach);
                             else if (minAsk == 45) mediaPlayer = MediaPlayer.create(Game.this, R.raw.vor);
                             else {
-                                System.out.println(hrAsk);
-                                int hrSound = res.getIdentifier("u"+hrAsk, "raw", getPackageName());
+                                int hrSound = res.getIdentifier("n"+hrAsk, "raw", getPackageName());
                                 mediaPlayer = MediaPlayer.create(Game.this, hrSound);
                             }
                             mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -255,9 +266,10 @@ public class Game extends AppCompatActivity {
                                 @Override
                                 public void onCompletion(MediaPlayer mediaPlayer) {
                                     mediaPlayer.release();
+                                    mediaPlayer = null;
 
                                     if (minAsk != 30) {
-                                        int hrSound = res.getIdentifier("u"+hrAsk, "raw", getPackageName());
+                                        int hrSound = res.getIdentifier("n"+hrAsk, "raw", getPackageName());
                                         mediaPlayer = MediaPlayer.create(Game.this, hrSound);
                                         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                             public void onPrepared(MediaPlayer player) {
@@ -268,6 +280,7 @@ public class Game extends AppCompatActivity {
                                             @Override
                                             public void onCompletion(MediaPlayer mediaPlayer) {
                                                 mediaPlayer.release();
+                                                mediaPlayer = null;
                                                 sound.clearColorFilter();
                                                 // reactivate touch events
                                                 blockTouch = false;
@@ -298,6 +311,7 @@ public class Game extends AppCompatActivity {
             @Override
             public void onCompletion(MediaPlayer mediaPlayer) {
                 mediaPlayer.release();
+                mediaPlayer = null;
                 mediaPlayer = MediaPlayer.create(Game.this, hrSound);
                 mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                     public void onPrepared(MediaPlayer player) {
@@ -308,10 +322,17 @@ public class Game extends AppCompatActivity {
                     @Override
                     public void onCompletion(MediaPlayer mediaPlayer) {
                         mediaPlayer.release();
+                        mediaPlayer = null;
                         if (hrOnly) {
-                            if (level == 9 || level == 11) {
-                                if (hrRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_vor);
-                                else mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_in);
+                            if (level > 8 && level < 12) { // levels 9,10,11 have ranges
+                                if (level == 9 || (level == 11 && taskNr < 5)) {
+                                    if (hrRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_vor);
+                                    else mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_in);
+                                } else {
+                                    if (minRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_vor);
+                                    else mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_in);
+                                }
+
                                 mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                     public void onPrepared(MediaPlayer player) {
                                         player.start();
@@ -321,8 +342,9 @@ public class Game extends AppCompatActivity {
                                     @Override
                                     public void onCompletion(MediaPlayer mediaPlayer) {
                                         mediaPlayer.release();
-                                        final int hrRangeSound = res.getIdentifier("s"+Math.abs(hrRange[taskNr]), "raw", getPackageName());
-                                        mediaPlayer = MediaPlayer.create(Game.this, hrRangeSound);
+                                        mediaPlayer = null;
+                                        final int rangeSound = res.getIdentifier((level == 9 || (level == 11 && taskNr < 5)) ? "s"+Math.abs(hrRange[taskNr]) : "m"+Math.abs(minRange[taskNr]), "raw", getPackageName());
+                                        mediaPlayer = MediaPlayer.create(Game.this, rangeSound);
                                         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                             public void onPrepared(MediaPlayer player) {
                                                 player.start();
@@ -332,6 +354,7 @@ public class Game extends AppCompatActivity {
                                             @Override
                                             public void onCompletion(MediaPlayer mediaPlayer) {
                                                 mediaPlayer.release();
+                                                mediaPlayer = null;
                                                 sound.clearColorFilter();
 
                                                 // reactivate touch events
@@ -358,6 +381,7 @@ public class Game extends AppCompatActivity {
                                 @Override
                                 public void onCompletion(MediaPlayer mediaPlayer) {
                                     mediaPlayer.release();
+                                    mediaPlayer = null;
                                     mediaPlayer = MediaPlayer.create(Game.this, minSound);
                                     mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                         public void onPrepared(MediaPlayer player) {
@@ -368,7 +392,8 @@ public class Game extends AppCompatActivity {
                                         @Override
                                         public void onCompletion(MediaPlayer mediaPlayer) {
                                             mediaPlayer.release();
-                                            if (level == 10 || level == 12) {
+                                            mediaPlayer = null;
+                                            if (level == 10 || level == 11) {
                                                 if (minRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_vor);
                                                 else mediaPlayer = MediaPlayer.create(Game.this, R.raw.wie_viel_in);
                                                 mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -380,6 +405,7 @@ public class Game extends AppCompatActivity {
                                                     @Override
                                                     public void onCompletion(MediaPlayer mediaPlayer) {
                                                         mediaPlayer.release();
+                                                        mediaPlayer = null;
                                                         final int minRangeSound = res.getIdentifier("m"+Math.abs(minRange[taskNr]), "raw", getPackageName());
                                                         mediaPlayer = MediaPlayer.create(Game.this, minRangeSound);
                                                         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -391,6 +417,7 @@ public class Game extends AppCompatActivity {
                                                             @Override
                                                             public void onCompletion(MediaPlayer mediaPlayer) {
                                                                 mediaPlayer.release();
+                                                                mediaPlayer = null;
                                                                 sound.clearColorFilter();
 
                                                                 // reactivate touch events
@@ -423,20 +450,23 @@ public class Game extends AppCompatActivity {
             if ((minRotation / 6) % 60 == task.get(taskNr).get(1)) Collections.swap(task, taskNr, task.size()-1);
         }
         hrAsk = task.get(taskNr).get(0);
-        if (level == 9 || level == 11) {
+        if (level == 9 || (level == 11 && taskNr < 5)) {
             hrAsk += hrRange[taskNr];
-            if (hrAsk <= 0) hrAsk += 12;
+            if (hrAsk < 0) hrAsk += 12;
+            if (level == 9 && hrAsk == 0) hrAsk = 12;
+            if (level == 9 && hrAsk > 12) hrAsk -= 12;
+            if (level == 11 && hrAsk > 23) hrAsk -= 12;
         }
-        if (level == 10 || level == 12) {
+        if (level == 10 || (level == 11 && taskNr >= 5)) {
             minAsk = task.get(taskNr).get(1) + minRange[taskNr];
         } else {
             minAsk = task.get(taskNr).get(1);
         }
 
         if (level == 3 && minAsk > 15) hrAsk++;
+        if (level == 3 && hrAsk > 12) hrAsk -= 12; // adjust for this one special case
         if (level > 8) setClock(hrAsk, minAsk);
         taskSound();
-        question.setText(" "+task.get(taskNr).get(0)+" : "+task.get(taskNr).get(1));
     }
 
     void completeTask() {
@@ -444,9 +474,8 @@ public class Game extends AppCompatActivity {
         if (level < 9) TranslateView(hrArrow, hrRotation);
         if (level < 9) TranslateView(minArrow, minRotation);
 
-        if (taskNr < 4) {
+        if (taskNr < 9) {
             taskNr++;
-            usedHint = false;
             nextTask();
         } else {
             Intent intent = new Intent(Game.this,LevelComplete.class);
@@ -454,28 +483,7 @@ public class Game extends AppCompatActivity {
             intent.putExtra("correct", correctAnswers);
             startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-            if (correctAnswers < (taskNr+1)*0.8f) {
-                finish();
-                return;
-            }
-
-            (new Handler()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (level < 12) {
-                        LevelComplete.getInstance().finish();
-                        if (level == 0) {
-                            minRotation = 180;
-                            TranslateView(minArrow, minRotation);
-                        }
-                        level++;
-                        Intent intent = new Intent(Game.this,Instructions.class);
-                        intent.putExtra("startLevel", level);
-                        startActivityForResult(intent, 1);
-                        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-                    }
-                }
-            }, 7000);
+            finish();
         }
     }
 
@@ -498,25 +506,53 @@ public class Game extends AppCompatActivity {
         view.setRotation(rotation);
     }
 
-    void sayNumber(int number, String arrow) {
+    void sayNumber(int number, final String arrow) {
         final Resources res = getResources();
 
         // say 12 o'clock instead of 0 o'çlock
         if (number == 0 && arrow == "u") number = 12;
         final int numSound = res.getIdentifier(arrow+number, "raw", getPackageName());
+        if (mediaPlayer != null) {
+            try {
+                if (mediaPlayer.isPlaying()) {
+                    if (!interruptAllowed || (level == 1 && arrow == "m")) return;
+                    mediaPlayer.stop();
+                }
+            } catch (Exception e) {}
+            mediaPlayer.release();
+        }
         mediaPlayer = MediaPlayer.create(Game.this, numSound);
         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             public void onPrepared(MediaPlayer player) {
                 player.start();
+                interruptAllowed = true;
             }
         });
         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mediaPlayer) {
+                interruptAllowed = false;
                 mediaPlayer.release();
+                //if (level == 1 && arrow == "m") blockTouch = false;
 
-                // reactivate touch events
-                blockTouch = false;
+                if (level == 1 && arrow == "u") {
+                    // additional preference: say full times on tap for the first two levels (true for level==0 by default)
+                    //blockTouch = true; // block touch events in case of a double audio
+                    final int andSound = res.getIdentifier("und", "raw", getPackageName());
+                    mediaPlayer = MediaPlayer.create(Game.this, andSound);
+                    mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                        public void onPrepared(MediaPlayer player) {
+                            player.start();
+                        }
+                    });
+                    mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                        @Override
+                        public void onCompletion(MediaPlayer mediaPlayer) {
+                            mediaPlayer.release();
+                            sayNumber(30, "m");
+                        }
+                    });
+                }
             }
         });
     }
@@ -640,6 +676,7 @@ public class Game extends AppCompatActivity {
                             // move arrow back to its previous position
                             TranslateView(hrArrow, hrRotation);
                             blockTouch = false;
+                            hint.clearColorFilter();
                         }
                     }, 400);
                 }
@@ -660,6 +697,7 @@ public class Game extends AppCompatActivity {
                             // move arrow back to its previous position
                             TranslateView(minArrow, minRotation);
                             blockTouch = false;
+                            hint.clearColorFilter();
                         }
                     }, 400);
                 }
@@ -719,6 +757,7 @@ public class Game extends AppCompatActivity {
                     hand.clearAnimation();
                     hand.setVisibility(View.INVISIBLE);
                     blockTouch = false;
+                    hint.clearColorFilter();
                 }
             }, 1600);
         }
@@ -735,39 +774,9 @@ public class Game extends AppCompatActivity {
             int actionmasked = motionEvent.getActionMasked();
 
             if (actionmasked == MotionEvent.ACTION_DOWN) {
-                if (view == exit) {
-                    exit.setColorFilter(Color.rgb(200, 200, 200), android.graphics.PorterDuff.Mode.MULTIPLY);
-                    LayoutInflater inflater = LayoutInflater.from(Game.this);
-                    View view1 = inflater.inflate(R.layout.alert_dialog, null);
-
-                    final AlertDialog builder = new AlertDialog.Builder(Game.this).setView(view1).create();
-                    builder.setCanceledOnTouchOutside(false);
-
-                    Button yes = view1.findViewById(R.id.yes);
-                    Button no = view1.findViewById(R.id.no);
-
-                    yes.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            builder.dismiss();
-                            finish();
-                        }
-                    });
-
-                    no.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            builder.cancel();
-                            exit.clearColorFilter();
-                        }
-                    });
-
-                    builder.show();
-
-                    return true;
-                } else if (view == hint)  {
-                    usedHint = true;
+                if (view == hint)  {
                     blockTouch = true;
+                    hint.setColorFilter(Color.rgb(200, 200, 200), android.graphics.PorterDuff.Mode.MULTIPLY);
                     hand.setAlpha(0.6f);
                     hint();
                     return true;
@@ -793,9 +802,18 @@ public class Game extends AppCompatActivity {
                     if ((hrRotation / 30) % 12 == hourTo12 % 12) {
                         if ((minRotation / 6) % 60 == task.get(taskNr).get(1)) {
                             // correct answer
+                            if (mediaPlayer != null) {
+                                try {
+                                    if (mediaPlayer.isPlaying()) {
+                                        mediaPlayer.stop();
+                                    }
+                                } catch (Exception e) {}
+                                mediaPlayer.release();
+                            }
+
                             Resources res = getResources();
                             final int correct_tone = res.getIdentifier("correct_tone", "raw", getPackageName());
-                            final int sound = res.getIdentifier("correct"+(taskNr % 6 + 1), "raw", getPackageName());
+                            final int sound = res.getIdentifier("correct"+(taskNr % 5 + 1), "raw", getPackageName());
                             mediaPlayer = MediaPlayer.create(Game.this, correct_tone);
                             mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                 public void onPrepared(MediaPlayer player) {
@@ -807,26 +825,12 @@ public class Game extends AppCompatActivity {
                                 @Override
                                 public void run() {
                                     Congratulate();
-                                    star.startAnimation(bounceAnim);
 
                                     (new Handler()).postDelayed(new Runnable() {
                                         @Override
                                         public void run() {
-                                            if (totalPoints == 0) star.clearColorFilter();
-                                            points.setVisibility(View.INVISIBLE);
-                                        }
-                                    },200);
-
-                                    (new Handler()).postDelayed(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            totalPoints++;
-                                            if (!usedHint) totalPoints += 2;
                                             correctAnswers++;
 
-                                            if (totalPoints > 9) points.setTranslationX((float) Math.floor(Math.log10(totalPoints))*8);
-                                            points.setText(""+totalPoints);
-                                            points.setVisibility(View.VISIBLE);
                                             mediaPlayer.release();
                                             mediaPlayer = MediaPlayer.create(Game.this, sound);
                                             mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -848,6 +852,15 @@ public class Game extends AppCompatActivity {
                             }, 10);
                         } else {
                             // wrong answer
+                            if (mediaPlayer != null) {
+                                try {
+                                    if (mediaPlayer.isPlaying()) {
+                                        mediaPlayer.stop();
+                                    }
+                                } catch (Exception e) {}
+                                mediaPlayer.release();
+                            }
+
                             Resources res = getResources();
                             final int sound = res.getIdentifier("wrong"+(taskNr % 4 + 1), "raw", getPackageName());
                             mediaPlayer = MediaPlayer.create(Game.this, sound);
@@ -860,6 +873,7 @@ public class Game extends AppCompatActivity {
                                 @Override
                                 public void onCompletion(MediaPlayer mediaPlayer) {
                                     mediaPlayer.release();
+                                    mediaPlayer = null;
                                     assess.clearColorFilter();
                                     completeTask();
                                 }
@@ -867,6 +881,15 @@ public class Game extends AppCompatActivity {
                         }
                     } else {
                         // wrong answer
+                        if (mediaPlayer != null) {
+                            try {
+                                if (mediaPlayer.isPlaying()) {
+                                    mediaPlayer.stop();
+                                }
+                            } catch (Exception e) {}
+                            mediaPlayer.release();
+                        }
+
                         Resources res = getResources();
                         final int sound = res.getIdentifier("wrong"+(taskNr % 4 + 1), "raw", getPackageName());
                         mediaPlayer = MediaPlayer.create(Game.this, sound);
@@ -879,6 +902,7 @@ public class Game extends AppCompatActivity {
                             @Override
                             public void onCompletion(MediaPlayer mediaPlayer) {
                                 mediaPlayer.release();
+                                mediaPlayer = null;
                                 assess.clearColorFilter();
                                 completeTask();
                             }
@@ -886,7 +910,7 @@ public class Game extends AppCompatActivity {
                     }
 
                     // update progress bar
-                    ObjectAnimator animation = ObjectAnimator.ofInt(progressBar, "progress", (taskNr+1)*20);
+                    ObjectAnimator animation = ObjectAnimator.ofInt(progressBar, "progress", (taskNr+1)*10);
                     animation.setDuration(800);
                     animation.setInterpolator(new AccelerateDecelerateInterpolator());
                     animation.start();
@@ -935,7 +959,6 @@ public class Game extends AppCompatActivity {
                 while (hrRotation < 0) hrRotation +=360;
                 while (minRotation < 0) minRotation +=360;
 
-                blockTouch = true;
                 int number = (view == hrArrow) ? (int)(hrRotation / 30) % 12 : (int)(minRotation / 6) % 60;
                 sayNumber(number, (view == hrArrow) ? "u" : "m");
                 return true;

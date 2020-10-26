@@ -1,4 +1,4 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
@@ -26,11 +26,10 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 // Imitates Game Activity, but only plays predefined animations instead of implementing onTouchListeners
 public class Instructions extends AppCompatActivity {
-    ImageView hrArrow, minArrow, exit, hint, assess, star, congrats, hand, dim;
+    ImageView hrArrow, minArrow, hint, assess, congrats, hand, dim;
     TextView x;
     ProgressBar progressBar;
     Animation zoomAnim;
@@ -40,7 +39,7 @@ public class Instructions extends AppCompatActivity {
     float centerX, centerY;         // the actual center coordinates of the clock
     int taskNr;                     // current task to be answered
     int level;                      // current level
-    ArrayList<List<Integer>> task;  // all tasks to be completed in this level
+    ArrayList<List<Integer>> task;  // all tasks to be completed de.tum.in this level
     int[] hrRange;                  // hour offsets for highest levels
     int[] minRange;                 // minute offsets for highest levels
     MediaPlayer mediaPlayer;
@@ -74,10 +73,8 @@ public class Instructions extends AppCompatActivity {
 
         hrArrow = findViewById(R.id.blueArrow);
         minArrow = findViewById(R.id.redArrow);
-        exit = findViewById(R.id.exit);
         hint = findViewById(R.id.hint);
         assess = findViewById(R.id.assess);
-        star = findViewById(R.id.star);
         congrats = findViewById(R.id.congrats);
         progressBar = findViewById(R.id.progressBar);
         hand = findViewById(R.id.hand);
@@ -88,10 +85,17 @@ public class Instructions extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 finished = true;
+                if (mediaPlayer != null) {
+                    try {
+                        if (mediaPlayer.isPlaying()) mediaPlayer.stop();
+                    } catch (Exception e) {}
+                    mediaPlayer.release();
+                }
+
                 Intent intent = new Intent(Instructions.this,Game.class);
+                intent.putExtra("level", level);
                 startActivity(intent);
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-                if (mediaPlayer != null) mediaPlayer.release();
                 finish();
             }
         });
@@ -343,14 +347,14 @@ public class Instructions extends AppCompatActivity {
             task.add(Arrays.asList(11,25));
             task.add(Arrays.asList(1,40));
         }
-        if (level == 5 || level == 11) {
+        if (level == 5) {
             task.add(Arrays.asList(13,0));
             task.add(Arrays.asList(21,0));
             task.add(Arrays.asList(0,0));
         }
         if (level == 6) {
             task.add(Arrays.asList(16,15));
-            task.add(Arrays.asList(7,15));
+            task.add(Arrays.asList(7,30));
             task.add(Arrays.asList(23,45));
         }
         if (level == 7) {
@@ -358,7 +362,7 @@ public class Instructions extends AppCompatActivity {
             task.add(Arrays.asList(17,55));
             task.add(Arrays.asList(20,10));
         }
-        if (level == 8 || level == 12) {
+        if (level == 8) {
             task.add(Arrays.asList(22,35));
             task.add(Arrays.asList(14,20));
             task.add(Arrays.asList(12,5));
@@ -370,10 +374,11 @@ public class Instructions extends AppCompatActivity {
             minRange = new int[]{30, 5, -20};
         }
         if (level == 11) {
-            hrRange = new int[]{-1, 3, -5};
-        }
-        if (level == 12) {
-            minRange = new int[]{15, -10, 50};
+            task.add(Arrays.asList(13,0));
+            task.add(Arrays.asList(21,0));
+            task.add(Arrays.asList(22,35));
+            hrRange = new int[]{3, -1, 0};
+            minRange = new int[]{0, 0, 15};
         }
     }
 
@@ -395,7 +400,10 @@ public class Instructions extends AppCompatActivity {
             final int hrNumber;
             final int minNumber = task.get(taskNr).get(1);
             if (minNumber == 15) hrNumber = task.get(taskNr).get(0);
-            else hrNumber = task.get(taskNr).get(0) + 1;
+            else {
+                if (task.get(taskNr).get(0) == 12) hrNumber = 1; // special case
+                else hrNumber = task.get(taskNr).get(0) + 1;
+            }
 
             mediaPlayer = MediaPlayer.create(Instructions.this, esIst);
             mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -407,6 +415,9 @@ public class Instructions extends AppCompatActivity {
                 @Override
                 public void onCompletion(MediaPlayer mediaPlayer) {
                     mediaPlayer.release();
+                    mediaPlayer = null;
+                    // Stop playing if user closed the Activity
+                    if (finished) return;
 
                     int stepSound;
                     if (minNumber == 15 || minNumber == 45)
@@ -423,12 +434,14 @@ public class Instructions extends AppCompatActivity {
                         @Override
                         public void onCompletion(MediaPlayer mediaPlayer) {
                             mediaPlayer.release();
+                            mediaPlayer = null;
+                            // Stop playing if user closed the Activity
+                            if (finished) return;
 
                             if (minNumber == 15) mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.nach);
                             else if (minNumber == 45) mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.vor);
                             else {
-                                System.out.println(hrNumber);
-                                int hrSound = res.getIdentifier("u"+hrNumber, "raw", getPackageName());
+                                int hrSound = res.getIdentifier("n"+hrNumber, "raw", getPackageName());
                                 mediaPlayer = MediaPlayer.create(Instructions.this, hrSound);
                             }
                             mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -440,9 +453,12 @@ public class Instructions extends AppCompatActivity {
                                 @Override
                                 public void onCompletion(MediaPlayer mediaPlayer) {
                                     mediaPlayer.release();
+                                    mediaPlayer = null;
+                                    // Stop playing if user closed the Activity
+                                    if (finished) return;
 
                                     if (minNumber != 30) {
-                                        int hrSound = res.getIdentifier("u"+hrNumber, "raw", getPackageName());
+                                        int hrSound = res.getIdentifier("n"+hrNumber, "raw", getPackageName());
                                         mediaPlayer = MediaPlayer.create(Instructions.this, hrSound);
                                         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                             public void onPrepared(MediaPlayer player) {
@@ -453,6 +469,7 @@ public class Instructions extends AppCompatActivity {
                                             @Override
                                             public void onCompletion(MediaPlayer mediaPlayer) {
                                                 mediaPlayer.release();
+                                                mediaPlayer = null;
                                                 animate();
                                             }
                                         });
@@ -467,12 +484,12 @@ public class Instructions extends AppCompatActivity {
         }
 
         int hrAsk = task.get(taskNr).get(0);
-        if (level == 9 || level == 11) {
+        if (level == 9 || (level == 11 && taskNr < 2)) {
             hrAsk += hrRange[taskNr];
             if (hrAsk <= 0) hrAsk += 12;
         }
         final int minAsk;
-        if (level == 10 || level == 12) {
+        if (level == 10 || (level == 11 && taskNr == 2)) {
             minAsk = task.get(taskNr).get(1) + minRange[taskNr];
         } else {
             minAsk = task.get(taskNr).get(1);
@@ -493,6 +510,10 @@ public class Instructions extends AppCompatActivity {
             @Override
             public void onCompletion(MediaPlayer mediaPlayer) {
                 mediaPlayer.release();
+                mediaPlayer = null;
+                // Stop playing if user closed the Activity
+                if (finished) return;
+
                 mediaPlayer = MediaPlayer.create(Instructions.this, hrSound);
                 mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                     public void onPrepared(MediaPlayer player) {
@@ -503,10 +524,19 @@ public class Instructions extends AppCompatActivity {
                     @Override
                     public void onCompletion(MediaPlayer mediaPlayer) {
                         mediaPlayer.release();
+                        mediaPlayer = null;
+                        // Stop playing if user closed the Activity
+                        if (finished) return;
+
                         if (hrOnly) {
-                            if (level == 9 || level == 11) {
-                                if (hrRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_vor);
-                                else mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_in);
+                            if (level > 8 && level < 12) { // levels 9,10,11 have ranges
+                                if (level == 9 || (level == 11 && taskNr < 2)) {
+                                    if (hrRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_vor);
+                                    else mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_in);
+                                } else {
+                                    if (minRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_vor);
+                                    else mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_in);
+                                }
                                 mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                     public void onPrepared(MediaPlayer player) {
                                         player.start();
@@ -516,8 +546,12 @@ public class Instructions extends AppCompatActivity {
                                     @Override
                                     public void onCompletion(MediaPlayer mediaPlayer) {
                                         mediaPlayer.release();
-                                        final int hrRangeSound = res.getIdentifier("s"+Math.abs(hrRange[taskNr]), "raw", getPackageName());
-                                        mediaPlayer = MediaPlayer.create(Instructions.this, hrRangeSound);
+                                        mediaPlayer = null;
+                                        // Stop playing if user closed the Activity
+                                        if (finished) return;
+
+                                        final int rangeSound = res.getIdentifier((level == 9 || (level == 11 && taskNr < 2)) ? "s"+Math.abs(hrRange[taskNr]) : "m"+Math.abs(minRange[taskNr]), "raw", getPackageName());
+                                        mediaPlayer = MediaPlayer.create(Instructions.this, rangeSound);
                                         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                             public void onPrepared(MediaPlayer player) {
                                                 player.start();
@@ -527,6 +561,7 @@ public class Instructions extends AppCompatActivity {
                                             @Override
                                             public void onCompletion(MediaPlayer mediaPlayer) {
                                                 mediaPlayer.release();
+                                                mediaPlayer = null;
                                                 animate();
                                             }
                                         });
@@ -546,6 +581,10 @@ public class Instructions extends AppCompatActivity {
                                 @Override
                                 public void onCompletion(MediaPlayer mediaPlayer) {
                                     mediaPlayer.release();
+                                    mediaPlayer = null;
+                                    // Stop playing if user closed the Activity
+                                    if (finished) return;
+
                                     mediaPlayer = MediaPlayer.create(Instructions.this, minSound);
                                     mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                         public void onPrepared(MediaPlayer player) {
@@ -556,7 +595,11 @@ public class Instructions extends AppCompatActivity {
                                         @Override
                                         public void onCompletion(MediaPlayer mediaPlayer) {
                                             mediaPlayer.release();
-                                            if (level == 10 || level == 12) {
+                                            mediaPlayer = null;
+                                            // Stop playing if user closed the Activity
+                                            if (finished) return;
+
+                                            if (level == 10 || level == 11) {
                                                 if (minRange[taskNr] > 0) mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_vor);
                                                 else mediaPlayer = MediaPlayer.create(Instructions.this, R.raw.wie_viel_in);
                                                 mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -568,6 +611,10 @@ public class Instructions extends AppCompatActivity {
                                                     @Override
                                                     public void onCompletion(MediaPlayer mediaPlayer) {
                                                         mediaPlayer.release();
+                                                        mediaPlayer = null;
+                                                        // Stop playing if user closed the Activity
+                                                        if (finished) return;
+
                                                         final int minRangeSound = res.getIdentifier("m"+Math.abs(minRange[taskNr]), "raw", getPackageName());
                                                         mediaPlayer = MediaPlayer.create(Instructions.this, minRangeSound);
                                                         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -579,6 +626,7 @@ public class Instructions extends AppCompatActivity {
                                                             @Override
                                                             public void onCompletion(MediaPlayer mediaPlayer) {
                                                                 mediaPlayer.release();
+                                                                mediaPlayer = null;
                                                                 animate();
                                                             }
                                                         });
@@ -603,14 +651,10 @@ public class Instructions extends AppCompatActivity {
         if (taskNr < 2) {
             taskNr++;
             nextTask();
-        } else if (level == 0) {
-            Intent intent = new Intent(Instructions.this,Game.class);
-            startActivity(intent);
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-            finish();
         } else {
-            Intent intent = new Intent();
-            setResult(1);
+            Intent intent = new Intent(Instructions.this,Game.class);
+            intent.putExtra("level", level);
+            startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             finish();
         }

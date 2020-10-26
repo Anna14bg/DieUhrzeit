@@ -1,7 +1,9 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.media.MediaPlayer;
 import android.os.Handler;
@@ -20,8 +22,9 @@ public class LevelComplete extends AppCompatActivity {
     Animation moveupAnim, fadeinAnim;
     ImageView level, ribbon;
     TextView result;
-    static final int TOTAL_TASKS = 5;
+    static final int TOTAL_TASKS = 10;
     MediaPlayer mediaPlayer;
+    SharedPreferences sharedprefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +72,7 @@ public class LevelComplete extends AppCompatActivity {
                     (new Handler()).postDelayed(new Runnable() {
                         @Override
                         public void run() {
-                            Intent intent = new Intent(LevelComplete.this, Welcome.class);
+                            Intent intent = new Intent(LevelComplete.this, UnlockedLevels.class);
                             startActivity(intent);
                             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
                             finish();
@@ -87,13 +90,33 @@ public class LevelComplete extends AppCompatActivity {
                     moveupAnim = AnimationUtils.loadAnimation(LevelComplete.this, R.anim.moveup_animation);
                     level.startAnimation(fadeinAnim);
                     ribbon.startAnimation(moveupAnim);
-                    final int sound = res.getIdentifier("level", "raw", getPackageName());
+                    final int sound = res.getIdentifier((levelNr == 12 ? "winner" : "level"), "raw", getPackageName());
                     mediaPlayer = MediaPlayer.create(LevelComplete.this, sound);
                     mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                         public void onPrepared(MediaPlayer player) {
                             player.start();
                         }
                     });
+
+                    if (levelNr < 12) {
+                        sharedprefs = getSharedPreferences("DieUhrzeitData", Context.MODE_PRIVATE);
+                        int lastData = sharedprefs.getInt("unlocked",0);
+                        if (levelNr > lastData) {
+                            SharedPreferences.Editor editor = sharedprefs.edit();
+                            editor.putInt("unlocked", levelNr);
+                            editor.commit();
+                        }
+                    }
+
+                    (new Handler()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            Intent intent = new Intent(LevelComplete.this, UnlockedLevels.class);
+                            startActivity(intent);
+                            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+                            finish();
+                        }
+                    }, 5000);
                 }
             }
         },2000);
@@ -110,15 +133,5 @@ public class LevelComplete extends AppCompatActivity {
                         View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
                         View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mediaPlayer.release();
-    }
-
-    public static LevelComplete getInstance(){
-        return   activity;
     }
 }

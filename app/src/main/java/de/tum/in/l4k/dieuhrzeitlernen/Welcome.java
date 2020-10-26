@@ -1,4 +1,4 @@
-package com.example.dieuhrzeit;
+package de.tum.in.l4k.dieuhrzeitlernen;
 
 import android.app.AlertDialog;
 import android.content.Intent;
@@ -14,12 +14,13 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 public class Welcome extends AppCompatActivity {
     Animation shakeAnim;
-    ImageView bird, start, impressum;
+    ImageView bird, exit, start, impressum;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,9 +36,44 @@ public class Welcome extends AppCompatActivity {
         setContentView(R.layout.activity_welcome);
 
         bird = findViewById(R.id.bird);
+        exit = findViewById(R.id.exit);
         start = findViewById(R.id.start);
         impressum = findViewById(R.id.impressum);
         shakeAnim = AnimationUtils.loadAnimation(this, R.anim.shake_animation);
+
+        exit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                exit.setColorFilter(Color.rgb(200, 200, 200), android.graphics.PorterDuff.Mode.MULTIPLY);
+                LayoutInflater inflater = LayoutInflater.from(Welcome.this);
+                View alert = inflater.inflate(R.layout.alert_dialog, null);
+
+                final AlertDialog builder = new AlertDialog.Builder(Welcome.this).setView(alert).create();
+                builder.setCanceledOnTouchOutside(false);
+
+                Button yes = alert.findViewById(R.id.yes);
+                Button no = alert.findViewById(R.id.no);
+
+                yes.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        builder.dismiss();
+                        finish();
+                    }
+                });
+
+                no.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        builder.cancel();
+                        exit.clearColorFilter();
+                    }
+                });
+
+                builder.show();
+            }
+        });
+
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -62,6 +98,14 @@ public class Welcome extends AppCompatActivity {
                 showMenu();
             }
         },3800);
+
+        // make the bird move on click just for fun
+        bird.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                bird.startAnimation(shakeAnim);
+            }
+        });
     }
 
     void showMenu() {
@@ -72,7 +116,7 @@ public class Welcome extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 start.setColorFilter(Color.rgb(200, 200, 200), android.graphics.PorterDuff.Mode.MULTIPLY);
-                Intent intent = new Intent(Welcome.this,Instructions.class);
+                Intent intent = new Intent(Welcome.this,UnlockedLevels.class);
                 startActivity(intent);
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
                 finish();
