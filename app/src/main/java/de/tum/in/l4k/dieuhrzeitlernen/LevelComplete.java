@@ -48,7 +48,7 @@ public class LevelComplete extends AppCompatActivity {
 
         final Resources res = getResources();
 
-        if (correctAnswers >= TOTAL_TASKS*0.8f) {
+        if (correctAnswers >= TOTAL_TASKS*0.6f) {
             final int completed_tone = res.getIdentifier("completed_tone", "raw", getPackageName());
             mediaPlayer = MediaPlayer.create(LevelComplete.this, completed_tone);
             mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -61,7 +61,7 @@ public class LevelComplete extends AppCompatActivity {
         (new Handler()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (correctAnswers < TOTAL_TASKS*0.8f) {
+                if (correctAnswers < TOTAL_TASKS*0.6f) {
                     MediaPlayer mediaPlayer = MediaPlayer.create(LevelComplete.this, R.raw.gameover);
                     mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                         public void onPrepared(MediaPlayer player) {

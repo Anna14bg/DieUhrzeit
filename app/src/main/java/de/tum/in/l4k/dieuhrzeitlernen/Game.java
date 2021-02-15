@@ -452,10 +452,10 @@ public class Game extends AppCompatActivity {
         hrAsk = task.get(taskNr).get(0);
         if (level == 9 || (level == 11 && taskNr < 5)) {
             hrAsk += hrRange[taskNr];
-            if (hrAsk < 0) hrAsk += 12;
+            if (hrAsk < 0) hrAsk += (level == 9) ? 12 : 24;
             if (level == 9 && hrAsk == 0) hrAsk = 12;
             if (level == 9 && hrAsk > 12) hrAsk -= 12;
-            if (level == 11 && hrAsk > 23) hrAsk -= 12;
+            if (level == 11 && hrAsk > 23) hrAsk -= 24;
         }
         if (level == 10 || (level == 11 && taskNr >= 5)) {
             minAsk = task.get(taskNr).get(1) + minRange[taskNr];
@@ -509,8 +509,14 @@ public class Game extends AppCompatActivity {
     void sayNumber(int number, final String arrow) {
         final Resources res = getResources();
 
-        // say 12 o'clock instead of 0 o'çlock
-        if (number == 0 && arrow == "u") number = 12;
+        if (arrow == "u") {
+            if (task.get(taskNr).get(0) > 12 || task.get(taskNr).get(0) == 0) { // use 24h mode
+                if (number != 0) number = (number + 12) % 24;
+            } else { // use 12h mode: number is already in [0,11], so only handle the 0
+                if (number == 0) number = 12;
+            }
+        }
+
         final int numSound = res.getIdentifier(arrow+number, "raw", getPackageName());
         if (mediaPlayer != null) {
             try {
